@@ -1,16 +1,6 @@
 import React, { useState } from 'react';
-import { useNavigate, Link as RouterLink } from 'react-router-dom';
-import {
-  Container,
-  Paper,
-  Typography,
-  TextField,
-  Button,
-  Box,
-  Link,
-  Alert,
-} from '@mui/material';
-import { useAuth } from '../context/AuthContext';
+import { useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -19,30 +9,28 @@ const Register = () => {
     username: '',
     email: '',
     password: '',
-    confirmPassword: '',
+    confirmPassword: ''
   });
   const [formErrors, setFormErrors] = useState({});
 
   const validateForm = () => {
     const errors = {};
-    if (!formData.username) {
+    if (!formData.username.trim()) {
       errors.username = 'Username is required';
     } else if (formData.username.length < 3) {
       errors.username = 'Username must be at least 3 characters long';
     }
-    if (!formData.email) {
+    if (!formData.email.trim()) {
       errors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      errors.email = 'Please enter a valid email';
+      errors.email = 'Email is invalid';
     }
     if (!formData.password) {
       errors.password = 'Password is required';
     } else if (formData.password.length < 6) {
-      errors.password = 'Password must be at least 6 characters long';
+      errors.password = 'Password must be at least 6 characters';
     }
-    if (!formData.confirmPassword) {
-      errors.confirmPassword = 'Please confirm your password';
-    } else if (formData.password !== formData.confirmPassword) {
+    if (formData.password !== formData.confirmPassword) {
       errors.confirmPassword = 'Passwords do not match';
     }
     setFormErrors(errors);
@@ -51,15 +39,15 @@ const Register = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
-      [name]: value,
+      [name]: value
     }));
     // Clear error when user starts typing
     if (formErrors[name]) {
-      setFormErrors((prev) => ({
+      setFormErrors(prev => ({
         ...prev,
-        [name]: '',
+        [name]: ''
       }));
     }
   };
@@ -71,91 +59,116 @@ const Register = () => {
     try {
       await register(formData.username, formData.email, formData.password);
       navigate('/');
-    } catch (error) {
+    } catch (err) {
       // Error is handled by AuthContext
-      console.error('Registration error:', error);
+      console.error('Registration failed:', err);
     }
   };
 
   return (
-    <Container maxWidth="sm" sx={{ mt: 8 }}>
-      <Paper elevation={3} sx={{ p: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom align="center">
-          Register
-        </Typography>
+    <div className="max-w-md mx-auto">
+      <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg px-8 pt-6 pb-8 mb-4">
+        <h2 className="text-2xl font-bold mb-6 text-center text-gray-900 dark:text-white">Register</h2>
+        
         {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
+          <div className="error-alert mb-4">
             {error}
-          </Alert>
+          </div>
         )}
+
         <form onSubmit={handleSubmit}>
-          <TextField
-            fullWidth
-            label="Username"
-            name="username"
-            value={formData.username}
-            onChange={handleChange}
-            error={!!formErrors.username}
-            helperText={formErrors.username}
-            margin="normal"
-            required
-          />
-          <TextField
-            fullWidth
-            label="Email"
-            name="email"
-            type="email"
-            value={formData.email}
-            onChange={handleChange}
-            error={!!formErrors.email}
-            helperText={formErrors.email}
-            margin="normal"
-            required
-          />
-          <TextField
-            fullWidth
-            label="Password"
-            name="password"
-            type="password"
-            value={formData.password}
-            onChange={handleChange}
-            error={!!formErrors.password}
-            helperText={formErrors.password}
-            margin="normal"
-            required
-          />
-          <TextField
-            fullWidth
-            label="Confirm Password"
-            name="confirmPassword"
-            type="password"
-            value={formData.confirmPassword}
-            onChange={handleChange}
-            error={!!formErrors.confirmPassword}
-            helperText={formErrors.confirmPassword}
-            margin="normal"
-            required
-          />
-          <Button
-            type="submit"
-            fullWidth
-            variant="contained"
-            size="large"
-            sx={{ mt: 3 }}
-          >
-            Register
-          </Button>
+          <div className="mb-4">
+            <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2" htmlFor="username">
+              Username
+            </label>
+            <input
+              className={`input-field ${formErrors.username ? 'border-red-500' : ''}`}
+              id="username"
+              name="username"
+              type="text"
+              value={formData.username}
+              onChange={handleChange}
+              placeholder="Enter your username"
+            />
+            {formErrors.username && (
+              <p className="text-red-500 text-xs italic mt-1">{formErrors.username}</p>
+            )}
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2" htmlFor="email">
+              Email
+            </label>
+            <input
+              className={`input-field ${formErrors.email ? 'border-red-500' : ''}`}
+              id="email"
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={handleChange}
+              placeholder="Enter your email"
+            />
+            {formErrors.email && (
+              <p className="text-red-500 text-xs italic mt-1">{formErrors.email}</p>
+            )}
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2" htmlFor="password">
+              Password
+            </label>
+            <input
+              className={`input-field ${formErrors.password ? 'border-red-500' : ''}`}
+              id="password"
+              name="password"
+              type="password"
+              value={formData.password}
+              onChange={handleChange}
+              placeholder="Enter your password"
+            />
+            {formErrors.password && (
+              <p className="text-red-500 text-xs italic mt-1">{formErrors.password}</p>
+            )}
+          </div>
+
+          <div className="mb-6">
+            <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2" htmlFor="confirmPassword">
+              Confirm Password
+            </label>
+            <input
+              className={`input-field ${formErrors.confirmPassword ? 'border-red-500' : ''}`}
+              id="confirmPassword"
+              name="confirmPassword"
+              type="password"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              placeholder="Confirm your password"
+            />
+            {formErrors.confirmPassword && (
+              <p className="text-red-500 text-xs italic mt-1">{formErrors.confirmPassword}</p>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between">
+            <button
+              className="btn-primary"
+              type="submit"
+            >
+              Register
+            </button>
+          </div>
         </form>
-        <Box sx={{ mt: 2, textAlign: 'center' }}>
-          <Typography variant="body2">
+
+        <div className="text-center mt-4">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
             Already have an account?{' '}
-            <Link component={RouterLink} to="/login">
+            <Link to="/login" className="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
               Login here
             </Link>
-          </Typography>
-        </Box>
-      </Paper>
-    </Container>
+          </p>
+        </div>
+      </div>
+    </div>
   );
 };
 

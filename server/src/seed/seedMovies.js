@@ -1,7 +1,8 @@
 const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
-const User = require('../src/models/user.model');
-const Movie = require('../src/models/movie.model');
+require('dotenv').config();
+const User = require('../models/user.model');
+const Movie = require('../models/movie.model');
+const Review = require('../models/review.model');
 
 const movies = [
   {
@@ -110,7 +111,7 @@ const generateAdditionalMovies = () => {
   ];
 
   const additionalMovies = [];
-  const movieCount = 95; // To reach 100+ with the original movies
+  const movieCount = 95; 
 
   for (let i = 0; i < movieCount; i++) {
     const genre = genres[Math.floor(Math.random() * genres.length)];
@@ -137,7 +138,7 @@ const generateAdditionalMovies = () => {
 const seedDatabase = async () => {
   try {
     // Connect to MongoDB
-    await mongoose.connect('mongodb://localhost:27017/movie-rating-app', {
+    await mongoose.connect(process.env.MONGODB_URI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
@@ -145,17 +146,8 @@ const seedDatabase = async () => {
     // Clear existing data
     await User.deleteMany({});
     await Movie.deleteMany({});
+    await Review.deleteMany({});
 
-    // Create admin user
-    const hashedPassword = await bcrypt.hash('admin@123', 10);
-    const adminUser = new User({
-      username: 'admin',
-      role:"admin",
-      email: 'admin@example.com',
-      password: hashedPassword,
-      isAdmin: true,
-    });
-    await adminUser.save();
 
     // Combine original movies with generated ones
     const allMovies = [...movies, ...generateAdditionalMovies()];
@@ -165,6 +157,17 @@ const seedDatabase = async () => {
       const newMovie = new Movie(movie);
       await newMovie.save();
     }
+
+    // Create admin user
+    const adminUser  = new User({
+      username: 'admin',
+      role:"admin",
+      email: 'admin@example.com',
+      password: "admin@123",
+      isAdmin: true
+    });
+    await adminUser.save();
+
 
     console.log(`Database seeded successfully! Added ${allMovies.length} movies.`);
     process.exit(0);

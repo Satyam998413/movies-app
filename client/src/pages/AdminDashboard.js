@@ -1,31 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Container,
-  Typography,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Grid,
-  Card,
-  CardContent,
-  CardActions,
-  IconButton,
-  Box,
-  Alert,
-} from '@mui/material';
-import { Edit as EditIcon, Delete as DeleteIcon, Add as AddIcon } from '@mui/icons-material';
-import { useAuth } from '../context/AuthContext';
-import { movieService } from '../services/movieService';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { getAllMovies, createMovie, updateMovie, deleteMovie } from '../services/movieService';
+import { Button } from 'flowbite-react';
+import { Table } from 'flowbite-react';
+import { Alert } from 'flowbite-react';
+import { Modal } from 'flowbite-react';
+import { TextInput, Label, Textarea } from 'flowbite-react';
+import { Spinner } from 'flowbite-react';
 
 const AdminDashboard = () => {
-  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [movies, setMovies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [openDialog, setOpenDialog] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [movieToDelete, setMovieToDelete] = useState(null);
   const [editingMovie, setEditingMovie] = useState(null);
   const [formData, setFormData] = useState({
     title: '',
@@ -33,51 +25,123 @@ const AdminDashboard = () => {
     releaseYear: '',
     genre: '',
     director: '',
-    cast: '',
+    posterUrl: '',
   });
+  const [formErrors, setFormErrors] = useState({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [imageLoading, setImageLoading] = useState({});
 
   useEffect(() => {
+    const storedUser = JSON.parse(localStorage.getItem('user'));
+    if (!storedUser || storedUser.role !== 'admin') {
+      navigate('/');
+      return;
+    }
     fetchMovies();
-  }, []);
+  }, [navigate, currentPage]);
 
   const fetchMovies = async () => {
     try {
-      const response = await movieService.getAllMovies();
-      setMovies(response.data);
-      setLoading(false);
-    } catch (err) {
-      setError('Failed to fetch movies');
+      setLoading(true);
+      const response = await getAllMovies({ page: currentPage, limit: 10 });
+      setMovies(response.movies || []);
+      setTotalPages(response.totalPages || 1);
+      setError(null);
+    } catch (error) {
+      console.error('Error fetching movies:', error);
+      setError(error.response?.data?.message || 'Failed to fetch movies');
+    } finally {
       setLoading(false);
     }
   };
 
-  const handleOpenDialog = (movie = null) => {
-    if (movie) {
-      setEditingMovie(movie);
-      setFormData({
-        title: movie.title,
-        description: movie.description,
-        releaseYear: movie.releaseYear,
-        genre: movie.genre,
-        director: movie.director,
-        cast: movie.cast.join(', '),
-      });
-    } else {
-      setEditingMovie(null);
+  const handleImageLoad = (movieId) => {
+    setImageLoading(prev => ({ ...prev, [movieId]: false }));
+  };
+
+  const handleImageError = (movieId) => {
+    setImageLoading(prev => ({ ...prev, [movieId]: false }));
+  };
+
+  const validateForm = () => {
+    const errors = {};
+    if (!formData.title.trim()) errors.title = 'Title is required';
+    if (!formData.description.trim()) errors.description = 'Description is required';
+    if (!formData.releaseYear) errors.releaseYear = 'Release year is required';
+    if (!formData.genre.trim()) errors.genre = 'Genre is required';
+    if (!formData.director.trim()) errors.director = 'Director is required';
+    if (!formData.posterUrl.trim()) errors.posterUrl = 'Poster URL is required';
+    return errors;
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (formErrors[name]) {
+      setFormErrors((prev) => ({ ...prev, [name]: '' }));
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const errors = validateForm();
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+
+    try {
+      if (editingMovie) {
+        await updateMovie(editingMovie._id, formData);
+      } else {
+        await createMovie(formData);
+      }
+      setShowModal(false);
       setFormData({
         title: '',
         description: '',
         releaseYear: '',
         genre: '',
         director: '',
-        cast: '',
+        posterUrl: '',
       });
+      fetchMovies();
+    } catch (error) {
+      setError(error.response?.data?.message || 'Failed to save movie');
     }
-    setOpenDialog(true);
   };
 
-  const handleCloseDialog = () => {
-    setOpenDialog(false);
+  const handleEdit = (movie) => {
+    setEditingMovie(movie);
+    setFormData({
+      title: movie.title,
+      description: movie.description,
+      releaseYear: movie.releaseYear,
+      genre: movie.genre,
+      director: movie.director,
+      posterUrl: movie.posterUrl,
+    });
+    setShowModal(true);
+  };
+
+  const handleDeleteClick = (movie) => {
+    setMovieToDelete(movie);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    try {
+      await deleteMovie(movieToDelete._id);
+      setShowDeleteModal(false);
+      setMovieToDelete(null);
+      fetchMovies();
+    } catch (error) {
+      setError(error.response?.data?.message || 'Failed to delete movie');
+    }
+  };
+
+  const handleAddNew = () => {
     setEditingMovie(null);
     setFormData({
       title: '',
@@ -85,197 +149,258 @@ const AdminDashboard = () => {
       releaseYear: '',
       genre: '',
       director: '',
-      cast: '',
+      posterUrl: '',
     });
+    setShowModal(true);
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const movieData = {
-        ...formData,
-        cast: formData.cast.split(',').map((actor) => actor.trim()),
-      };
-
-      if (editingMovie) {
-        await movieService.updateMovie(editingMovie._id, movieData);
-      } else {
-        await movieService.createMovie(movieData);
-      }
-
-      handleCloseDialog();
-      fetchMovies();
-    } catch (err) {
-      setError('Failed to save movie');
-    }
-  };
-
-  const handleDelete = async (movieId) => {
-    if (window.confirm('Are you sure you want to delete this movie?')) {
-      try {
-        await movieService.deleteMovie(movieId);
-        fetchMovies();
-      } catch (err) {
-        setError('Failed to delete movie');
-      }
-    }
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
   };
 
   if (loading) {
     return (
-      <Container>
-        <Typography>Loading...</Typography>
-      </Container>
+      <div className="flex items-center justify-center min-h-screen">
+        <Spinner size="xl" />
+      </div>
     );
   }
 
-  if (!user?.isAdmin) {
+  if (error) {
     return (
-      <Container>
-        <Alert severity="error">Access denied. Admin privileges required.</Alert>
-      </Container>
+      <div className="container mx-auto px-4 py-8">
+        <Alert color="failure">{error}</Alert>
+      </div>
     );
   }
 
   return (
-    <Container sx={{ mt: 4 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 4 }}>
-        <Typography variant="h4" component="h1">
-          Admin Dashboard
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => handleOpenDialog()}
-        >
-          Add Movie
-        </Button>
-      </Box>
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+          <p className="text-gray-600">Welcome, {user?.username}</p>
+        </div>
+        <div className="flex space-x-4">
+          <Button onClick={handleAddNew}>Add New Movie</Button>
+          <Button color="gray" onClick={handleLogout}>Logout</Button>
+        </div>
+      </div>
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
+      {movies.length === 0 ? (
+        <div className="text-center py-8">
+          <p className="text-gray-500">No movies found. Add your first movie!</p>
+        </div>
+      ) : (
+        <>
+          <Table hoverable>
+            <Table.Head>
+              <Table.HeadCell>Poster</Table.HeadCell>
+              <Table.HeadCell>Title</Table.HeadCell>
+              <Table.HeadCell>Genre</Table.HeadCell>
+              <Table.HeadCell>Release Year</Table.HeadCell>
+              <Table.HeadCell>Director</Table.HeadCell>
+              <Table.HeadCell>Actions</Table.HeadCell>
+            </Table.Head>
+            <Table.Body>
+              {movies.map((movie) => (
+                <Table.Row key={movie._id}>
+                  <Table.Cell>
+                    <div className="relative w-20 h-30">
+                      {imageLoading[movie._id] !== false && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <Spinner size="sm" />
+                        </div>
+                      )}
+                      <img
+                        src={movie.posterUrl}
+                        alt={movie.title}
+                        className="w-20 h-30 object-cover rounded"
+                        onLoad={() => handleImageLoad(movie._id)}
+                        onError={() => handleImageError(movie._id)}
+                      />
+                    </div>
+                  </Table.Cell>
+                  <Table.Cell>{movie.title}</Table.Cell>
+                  <Table.Cell>{movie.genre}</Table.Cell>
+                  <Table.Cell>{movie.releaseYear}</Table.Cell>
+                  <Table.Cell>{movie.director}</Table.Cell>
+                  <Table.Cell>
+                    <div className="flex space-x-2">
+                      <Button
+                        size="sm"
+                        color="blue"
+                        onClick={() => handleEdit(movie)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        size="sm"
+                        color="failure"
+                        onClick={() => handleDeleteClick(movie)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </Table.Cell>
+                </Table.Row>
+              ))}
+            </Table.Body>
+          </Table>
+
+          {/* Pagination */}
+          <div className="flex items-center justify-center mt-4 space-x-2">
+            <Button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              color="gray"
+            >
+              Previous
+            </Button>
+            <span className="text-gray-700 dark:text-gray-300">
+              Page {currentPage} of {totalPages}
+            </span>
+            <Button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              color="gray"
+            >
+              Next
+            </Button>
+          </div>
+        </>
       )}
 
-      <Grid container spacing={3}>
-        {movies.map((movie) => (
-          <Grid item xs={12} sm={6} md={4} key={movie._id}>
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  {movie.title}
-                </Typography>
-                <Typography color="textSecondary" gutterBottom>
-                  {movie.releaseYear} • {movie.genre}
-                </Typography>
-                <Typography variant="body2" color="textSecondary">
-                  Director: {movie.director}
-                </Typography>
-                <Typography variant="body2" color="textSecondary">
-                  Cast: {movie.cast.join(', ')}
-                </Typography>
-              </CardContent>
-              <CardActions>
-                <IconButton
-                  size="small"
-                  onClick={() => handleOpenDialog(movie)}
-                >
-                  <EditIcon />
-                </IconButton>
-                <IconButton
-                  size="small"
-                  onClick={() => handleDelete(movie._id)}
-                >
-                  <DeleteIcon />
-                </IconButton>
-              </CardActions>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
-
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>
+      {/* Add/Edit Movie Modal */}
+      <Modal show={showModal} onClose={() => setShowModal(false)} size="md">
+        <Modal.Header>
           {editingMovie ? 'Edit Movie' : 'Add New Movie'}
-        </DialogTitle>
-        <form onSubmit={handleSubmit}>
-          <DialogContent>
-            <TextField
-              fullWidth
-              label="Title"
-              name="title"
-              value={formData.title}
-              onChange={handleChange}
-              margin="normal"
-              required
-            />
-            <TextField
-              fullWidth
-              label="Description"
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              margin="normal"
-              multiline
-              rows={4}
-              required
-            />
-            <TextField
-              fullWidth
-              label="Release Year"
-              name="releaseYear"
-              type="number"
-              value={formData.releaseYear}
-              onChange={handleChange}
-              margin="normal"
-              required
-            />
-            <TextField
-              fullWidth
-              label="Genre"
-              name="genre"
-              value={formData.genre}
-              onChange={handleChange}
-              margin="normal"
-              required
-            />
-            <TextField
-              fullWidth
-              label="Director"
-              name="director"
-              value={formData.director}
-              onChange={handleChange}
-              margin="normal"
-              required
-            />
-            <TextField
-              fullWidth
-              label="Cast (comma-separated)"
-              name="cast"
-              value={formData.cast}
-              onChange={handleChange}
-              margin="normal"
-              required
-            />
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCloseDialog}>Cancel</Button>
-            <Button type="submit" variant="contained">
-              {editingMovie ? 'Update' : 'Add'} Movie
+        </Modal.Header>
+        <Modal.Body>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <Label htmlFor="title">Title</Label>
+              <TextInput
+                id="title"
+                name="title"
+                value={formData.title}
+                onChange={handleChange}
+                color={formErrors.title ? 'failure' : 'gray'}
+                helperText={formErrors.title}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                color={formErrors.description ? 'failure' : 'gray'}
+                helperText={formErrors.description}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="releaseYear">Release Year</Label>
+              <TextInput
+                id="releaseYear"
+                name="releaseYear"
+                type="number"
+                value={formData.releaseYear}
+                onChange={handleChange}
+                color={formErrors.releaseYear ? 'failure' : 'gray'}
+                helperText={formErrors.releaseYear}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="genre">Genre</Label>
+              <TextInput
+                id="genre"
+                name="genre"
+                value={formData.genre}
+                onChange={handleChange}
+                color={formErrors.genre ? 'failure' : 'gray'}
+                helperText={formErrors.genre}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="director">Director</Label>
+              <TextInput
+                id="director"
+                name="director"
+                value={formData.director}
+                onChange={handleChange}
+                color={formErrors.director ? 'failure' : 'gray'}
+                helperText={formErrors.director}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="posterUrl">Poster URL</Label>
+              <TextInput
+                id="posterUrl"
+                name="posterUrl"
+                value={formData.posterUrl}
+                onChange={handleChange}
+                color={formErrors.posterUrl ? 'failure' : 'gray'}
+                helperText={formErrors.posterUrl}
+              />
+            </div>
+
+            <div className="flex justify-end space-x-2">
+              <Button color="gray" onClick={() => setShowModal(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" color="blue">
+                {editingMovie ? 'Update' : 'Create'}
+              </Button>
+            </div>
+          </form>
+        </Modal.Body>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal show={showDeleteModal} onClose={() => setShowDeleteModal(false)} size="md">
+        <Modal.Header>Delete Movie</Modal.Header>
+        <Modal.Body>
+          <div className="space-y-4">
+            <p>Are you sure you want to delete this movie?</p>
+            {movieToDelete && (
+              <div className="flex items-center space-x-4">
+                <img
+                  src={movieToDelete.posterUrl}
+                  alt={movieToDelete.title}
+                  className="w-16 h-24 object-cover rounded"
+                />
+                <div>
+                  <h3 className="font-semibold">{movieToDelete.title}</h3>
+                  <p className="text-sm text-gray-500">{movieToDelete.genre} • {movieToDelete.releaseYear}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </Modal.Body>
+        <Modal.Footer>
+          <div className="flex justify-end space-x-2">
+            <Button color="gray" onClick={() => setShowDeleteModal(false)}>
+              Cancel
             </Button>
-          </DialogActions>
-        </form>
-      </Dialog>
-    </Container>
+            <Button color="failure" onClick={handleDeleteConfirm}>
+              Delete
+            </Button>
+          </div>
+        </Modal.Footer>
+      </Modal>
+    </div>
   );
 };
 

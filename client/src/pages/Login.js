@@ -1,32 +1,22 @@
 import React, { useState } from 'react';
-import { useNavigate, Link as RouterLink } from 'react-router-dom';
-import {
-  Container,
-  Paper,
-  Typography,
-  TextField,
-  Button,
-  Box,
-  Link,
-  Alert,
-} from '@mui/material';
-import { useAuth } from '../context/AuthContext';
+import { useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 const Login = () => {
   const navigate = useNavigate();
   const { login, error } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
-    password: '',
+    password: ''
   });
   const [formErrors, setFormErrors] = useState({});
 
   const validateForm = () => {
     const errors = {};
-    if (!formData.email) {
+    if (!formData.email.trim()) {
       errors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      errors.email = 'Please enter a valid email';
+      errors.email = 'Email is invalid';
     }
     if (!formData.password) {
       errors.password = 'Password is required';
@@ -37,15 +27,15 @@ const Login = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
-      [name]: value,
+      [name]: value
     }));
     // Clear error when user starts typing
     if (formErrors[name]) {
-      setFormErrors((prev) => ({
+      setFormErrors(prev => ({
         ...prev,
-        [name]: '',
+        [name]: ''
       }));
     }
   };
@@ -57,68 +47,80 @@ const Login = () => {
     try {
       await login(formData.email, formData.password);
       navigate('/');
-    } catch (error) {
+    } catch (err) {
       // Error is handled by AuthContext
-      console.error('Login error:', error);
+      console.error('Login failed:', err);
     }
   };
 
   return (
-    <Container maxWidth="sm" sx={{ mt: 8 }}>
-      <Paper elevation={3} sx={{ p: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom align="center">
-          Login
-        </Typography>
+    <div className="max-w-md mx-auto">
+      <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg px-8 pt-6 pb-8 mb-4">
+        <h2 className="text-2xl font-bold mb-6 text-center text-gray-900 dark:text-white">Login</h2>
+        
         {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
+          <div className="error-alert mb-4">
             {error}
-          </Alert>
+          </div>
         )}
+
         <form onSubmit={handleSubmit}>
-          <TextField
-            fullWidth
-            label="Email"
-            name="email"
-            type="email"
-            value={formData.email}
-            onChange={handleChange}
-            error={!!formErrors.email}
-            helperText={formErrors.email}
-            margin="normal"
-            required
-          />
-          <TextField
-            fullWidth
-            label="Password"
-            name="password"
-            type="password"
-            value={formData.password}
-            onChange={handleChange}
-            error={!!formErrors.password}
-            helperText={formErrors.password}
-            margin="normal"
-            required
-          />
-          <Button
-            type="submit"
-            fullWidth
-            variant="contained"
-            size="large"
-            sx={{ mt: 3 }}
-          >
-            Login
-          </Button>
+          <div className="mb-4">
+            <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2" htmlFor="email">
+              Email
+            </label>
+            <input
+              className={`input-field ${formErrors.email ? 'border-red-500' : ''}`}
+              id="email"
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={handleChange}
+              placeholder="Enter your email"
+            />
+            {formErrors.email && (
+              <p className="text-red-500 text-xs italic mt-1">{formErrors.email}</p>
+            )}
+          </div>
+
+          <div className="mb-6">
+            <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2" htmlFor="password">
+              Password
+            </label>
+            <input
+              className={`input-field ${formErrors.password ? 'border-red-500' : ''}`}
+              id="password"
+              name="password"
+              type="password"
+              value={formData.password}
+              onChange={handleChange}
+              placeholder="Enter your password"
+            />
+            {formErrors.password && (
+              <p className="text-red-500 text-xs italic mt-1">{formErrors.password}</p>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between">
+            <button
+              className="btn-primary"
+              type="submit"
+            >
+              Login
+            </button>
+          </div>
         </form>
-        <Box sx={{ mt: 2, textAlign: 'center' }}>
-          <Typography variant="body2">
+
+        <div className="text-center mt-4">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
             Don't have an account?{' '}
-            <Link component={RouterLink} to="/register">
+            <Link to="/register" className="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
               Register here
             </Link>
-          </Typography>
-        </Box>
-      </Paper>
-    </Container>
+          </p>
+        </div>
+      </div>
+    </div>
   );
 };
 

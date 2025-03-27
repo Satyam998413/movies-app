@@ -1,23 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
-import {
-  Container,
-  Grid,
-  Card,
-  CardContent,
-  CardMedia,
-  Typography,
-  CardActionArea,
-  Box,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Pagination,
-  TextField,
-} from '@mui/material';
-import { Rating } from '@mui/material';
+import { Link } from 'react-router-dom';
 import movieService from '../services/movieService';
+import Image from '../components/Image';
+import Loading from '../components/Loading';
 
 const Home = () => {
   const [movies, setMovies] = useState([]);
@@ -26,19 +11,8 @@ const Home = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [genre, setGenre] = useState('');
-  const [sort, setSort] = useState('');
+  const [sort, setSort] = useState('newest');
   const [search, setSearch] = useState('');
-
-  const genres = [
-    'Action',
-    'Comedy',
-    'Drama',
-    'Horror',
-    'Sci-Fi',
-    'Romance',
-    'Documentary',
-    'Animation',
-  ];
 
   useEffect(() => {
     fetchMovies();
@@ -47,18 +21,19 @@ const Home = () => {
   const fetchMovies = async () => {
     try {
       setLoading(true);
-      const params = {
+      setError(null);
+      const response = await movieService.getAllMovies({
         page,
+        limit: 12,
         genre,
         sort,
-        search,
-      };
-      const response = await movieService.getAllMovies(params);
+        search
+      });
       setMovies(response.movies);
       setTotalPages(response.totalPages);
-    } catch (error) {
+    } catch (err) {
       setError('Failed to fetch movies');
-      console.error('Error fetching movies:', error);
+      console.error('Error fetching movies:', err);
     } finally {
       setLoading(false);
     }
@@ -68,128 +43,122 @@ const Home = () => {
     setPage(value);
   };
 
-  if (loading) {
-    return (
-      <Container>
-        <Typography>Loading...</Typography>
-      </Container>
-    );
-  }
+  const handleGenreChange = (event) => {
+    setGenre(event.target.value);
+    setPage(1);
+  };
 
-  if (error) {
-    return (
-      <Container>
-        <Typography color="error">{error}</Typography>
-      </Container>
-    );
+  const handleSortChange = (event) => {
+    setSort(event.target.value);
+    setPage(1);
+  };
+
+  const handleSearch = (event) => {
+    setSearch(event.target.value);
+    setPage(1);
+  };
+
+  if (loading && page === 1) {
+    return <Loading fullScreen />;
   }
 
   return (
-    <Container sx={{ py: 4 }}>
-      <Box sx={{ mb: 4 }}>
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={4}>
-            <TextField
-              fullWidth
-              label="Search movies"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <FormControl fullWidth>
-              <InputLabel>Genre</InputLabel>
-              <Select
-                value={genre}
-                label="Genre"
-                onChange={(e) => setGenre(e.target.value)}
-              >
-                <MenuItem value="">All Genres</MenuItem>
-                {genres.map((g) => (
-                  <MenuItem key={g} value={g}>
-                    {g}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <FormControl fullWidth>
-              <InputLabel>Sort By</InputLabel>
-              <Select
-                value={sort}
-                label="Sort By"
-                onChange={(e) => setSort(e.target.value)}
-              >
-                <MenuItem value="">Latest</MenuItem>
-                <MenuItem value="rating">Rating</MenuItem>
-                <MenuItem value="year">Year</MenuItem>
-                <MenuItem value="title">Title</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-        </Grid>
-      </Box>
+    <div className="container mx-auto px-4">
+      <div className="mb-8">
+        <div className="flex flex-col md:flex-row gap-4 mb-4">
+          <input
+            type="text"
+            placeholder="Search movies..."
+            value={search}
+            onChange={handleSearch}
+            className="input-field flex-1"
+          />
+          <select
+            value={genre}
+            onChange={handleGenreChange}
+            className="input-field md:w-48"
+          >
+            <option value="">All Genres</option>
+            <option value="action">Action</option>
+            <option value="comedy">Comedy</option>
+            <option value="drama">Drama</option>
+            <option value="horror">Horror</option>
+            <option value="sci-fi">Sci-Fi</option>
+          </select>
+          <select
+            value={sort}
+            onChange={handleSortChange}
+            className="input-field md:w-48"
+          >
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="rating">Highest Rated</option>
+          </select>
+        </div>
+      </div>
 
-      <Grid container spacing={4}>
+      {error && (
+        <div className="error-alert mb-4">
+          {error}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {movies.map((movie) => (
-          <Grid item key={movie._id} xs={12} sm={6} md={4} lg={3}>
-            <Card
-              sx={{
-                height: '100%',
-                display: 'flex',
-                flexDirection: 'column',
-              }}
-            >
-              <CardActionArea
-                component={RouterLink}
-                to={`/movie/${movie._id}`}
-                sx={{ flexGrow: 1 }}
-              >
-                <CardMedia
-                  component="img"
-                  height="300"
-                  image={movie.posterUrl}
-                  alt={movie.title}
-                />
-                <CardContent>
-                  <Typography gutterBottom variant="h6" component="div">
-                    {movie.title}
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    gutterBottom
-                  >
-                    {movie.releaseYear} • {movie.genre}
-                  </Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Rating
-                      value={movie.averageRating}
-                      precision={0.5}
-                      readOnly
-                      size="small"
-                    />
-                    <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
-                      ({movie.totalRatings})
-                    </Typography>
-                  </Box>
-                </CardContent>
-              </CardActionArea>
-            </Card>
-          </Grid>
+          <Link
+            key={movie._id}
+            to={`/movie/${movie._id}`}
+            className="card hover:shadow-lg transition-shadow duration-300"
+          >
+            <Image
+              src={movie.posterUrl}
+              alt={movie.title}
+              className="w-full h-64 object-cover rounded-t-lg"
+            />
+            <div className="p-4">
+              <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">
+                {movie.title}
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                {movie.releaseYear} • {movie.genre}
+              </p>
+              <div className="flex items-center">
+                <span className="text-yellow-500">★</span>
+                <span className="ml-1 text-gray-600 dark:text-gray-400">
+                  {movie.averageRating.toFixed(1)}
+                </span>
+              </div>
+            </div>
+          </Link>
         ))}
-      </Grid>
+      </div>
 
-      <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
-        <Pagination
-          count={totalPages}
-          page={page}
-          onChange={handlePageChange}
-          color="primary"
-        />
-      </Box>
-    </Container>
+      {movies.length === 0 && !loading && (
+        <div className="text-center text-gray-600 dark:text-gray-400 py-8">
+          No movies found
+        </div>
+      )}
+
+      {totalPages > 1 && (
+        <div className="flex justify-center mt-8">
+          <nav className="flex items-center space-x-2">
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+              <button
+                key={pageNum}
+                onClick={() => setPage(pageNum)}
+                className={`px-4 py-2 rounded ${
+                  page === pageNum
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                {pageNum}
+              </button>
+            ))}
+          </nav>
+        </div>
+      )}
+    </div>
   );
 };
 

@@ -159,10 +159,11 @@ const deleteReview = async (req, res) => {
     }
 
     await movie.save();
-    await review.remove();
+    await Review.findByIdAndDelete(review._id);
 
     res.json({ message: 'Review deleted successfully.' });
   } catch (error) {
+    console.error('Error deleting review:', error);
     res.status(500).json({ message: 'Server error.' });
   }
 };
