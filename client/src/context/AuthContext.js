@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 
 const AuthContext = createContext(null);
@@ -17,10 +17,6 @@ export const AuthProvider = ({ children }) => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    }
     checkAuth();
   }, []);
 
@@ -28,12 +24,13 @@ export const AuthProvider = ({ children }) => {
     try {
       const token = localStorage.getItem('token');
       if (token) {
-        const response = await axios.get('http://localhost:5000/api/auth/me');
+        const response = await axios.get('http://localhost:5000/api/auth/me', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         setUser(response.data);
       }
-    } catch (error) {
+    } catch (err) {
       localStorage.removeItem('token');
-      delete axios.defaults.headers.common['Authorization'];
       setUser(null);
     } finally {
       setLoading(false);
@@ -49,12 +46,11 @@ export const AuthProvider = ({ children }) => {
       });
       const { token, user } = response.data;
       localStorage.setItem('token', token);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       setUser(user);
       return user;
-    } catch (error) {
-      setError(error.response?.data?.message || 'An error occurred');
-      throw error;
+    } catch (err) {
+      setError(err.response?.data?.message || 'Login failed');
+      throw err;
     }
   };
 
@@ -68,18 +64,16 @@ export const AuthProvider = ({ children }) => {
       });
       const { token, user } = response.data;
       localStorage.setItem('token', token);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       setUser(user);
       return user;
-    } catch (error) {
-      setError(error.response?.data?.message || 'An error occurred');
-      throw error;
+    } catch (err) {
+      setError(err.response?.data?.message || 'Registration failed');
+      throw err;
     }
   };
 
   const logout = () => {
     localStorage.removeItem('token');
-    delete axios.defaults.headers.common['Authorization'];
     setUser(null);
   };
 
