@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5000/api';
+// declaration variables
+let mqttHost = window.location.origin.split("//")[1].split(":")[0];
+const API_URL = `http://${mqttHost}:5000/api`;
 
 // Create axios instance with default config
 const api = axios.create({

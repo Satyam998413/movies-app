@@ -1,5 +1,5 @@
-const mongoose = require('mongoose');
 require('dotenv').config();
+const { connectDB, closeDB, mongoose } = require('../config/database');
 const User = require('../models/user.model');
 const Movie = require('../models/movie.model');
 const Review = require('../models/review.model');
@@ -137,17 +137,13 @@ const generateAdditionalMovies = () => {
 
 const seedDatabase = async () => {
   try {
-    // Connect to MongoDB
-    await mongoose.connect(process.env.MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    // Connect to MongoDB using the config
+    await connectDB();
 
     // Clear existing data
     await User.deleteMany({});
     await Movie.deleteMany({});
     await Review.deleteMany({});
-
 
     // Combine original movies with generated ones
     const allMovies = [...movies, ...generateAdditionalMovies()];
@@ -159,17 +155,19 @@ const seedDatabase = async () => {
     }
 
     // Create admin user
-    const adminUser  = new User({
+    const adminUser = new User({
       username: 'admin',
-      role:"admin",
+      role: "admin",
       email: 'admin@example.com',
       password: "admin@123",
       isAdmin: true
     });
     await adminUser.save();
 
-
     console.log(`Database seeded successfully! Added ${allMovies.length} movies.`);
+    
+    // Close the database connection
+    await closeDB();
     process.exit(0);
   } catch (error) {
     console.error('Error seeding database:', error);
