@@ -3,18 +3,25 @@ const cors = require('cors');
 const morgan = require('morgan');
 require('dotenv').config();
 const { connectDB } = require('./config/database');
+const { httpLogger } = require('./lib/winstonLogger');
 
 const app = express();
 
 // Middleware
-app.use(cors({
-  origin: 'https://movies-app-review.vercel.app',
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
-}));
+// app.use(cors({
+//   origin: 'https://movies-app-review.vercel.app',
+//   methods: ['GET', 'POST', 'PUT', 'DELETE'],
+//   allowedHeaders: ['Content-Type', 'Authorization'],
+//   credentials: true,
+// }));
+
+app.use(cors())
 app.use(express.json());
 app.use(morgan('dev'));
+
+// Custom Middleware to log request details and execution time
+app.use(httpLogger);
+
 
 // Routes
 app.use('/api/auth', require('./routes/auth.routes'));

@@ -1,9 +1,9 @@
 import axios from 'axios';
 
 // declaration variables
-let mqttHost = window.location.origin.split("//")[1].split(":")[0];
-mqttHost="https://movies-app-review.vercel.app"
-const API_URL = `http://${mqttHost}:5000/api`;
+let ip = window.location.origin.split("//")[1].split(":")[0];
+// ip="https://movies-app-review.vercel.app"
+const API_URL = `http://${ip}:5000/api`;
 
 // Create axios instance with default config
 const api = axios.create({
